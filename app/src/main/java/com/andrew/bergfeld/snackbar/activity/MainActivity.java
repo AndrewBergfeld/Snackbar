@@ -10,7 +10,6 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 
 import com.andrew.bergfeld.snackbar.R;
-import com.andrew.bergfeld.snackbar.SnackbarManager;
 import com.andrew.bergfeld.snackbar.adaper.DummyAdapter;
 import com.andrew.bergfeld.snackbar.widget.Snackbar;
 
@@ -18,7 +17,7 @@ public class MainActivity extends Activity {
 
     private ActionMode mActionMode;
     private ListView mList;
-    private SnackbarManager mSnackBarManager;
+    private Snackbar mSnackbar;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -26,18 +25,13 @@ public class MainActivity extends Activity {
 
         setContentView(R.layout.activity_main);
 
-        mSnackBarManager = new SnackbarManager((Snackbar) findViewById(R.id.snackbar));
+        mSnackbar = (Snackbar) findViewById(R.id.snackbar);
 
         setupList();
     }
 
-    public SnackbarManager getSnackBarManager() {
-        //I'm still up in the air on how to handle accessing the manager.
-        //Having the manager class hold onto a view statically for SnackBarManager.withMessage()
-        //isn't that appealing because of holding onto a reference of that view
-        //I think the answer is either figuring how to inject one and if that falls through
-        //then just this implementation would probably be better.
-        return mSnackBarManager;
+    public Snackbar getSnackbar() {
+        return mSnackbar;
     }
 
     private void setupList() {
@@ -49,15 +43,15 @@ public class MainActivity extends Activity {
                 if (mActionMode != null) {
                     mList.setSelection(position);
                 } else {
-                    getSnackBarManager().withMessage("List Item Clicked!")
-                                        .withAction("Ok!", new Snackbar.ActionListener() {
-                                            @Override
-                                            public void onActionClicked() {
-                                                //Do Stuff here
-                                            }
-                                        })
-                                        .withDuration(Snackbar.Duration.LONG)
-                                        .show();
+                    getSnackbar().withMessage("List Item Clicked!")
+                            .withAction("Ok!", new Snackbar.ActionListener() {
+                                @Override
+                                public void onActionClicked() {
+                                    //Do Stuff here
+                                }
+                            })
+                            .withDuration(Snackbar.Duration.LONG)
+                            .show();
                 }
             }
         });
@@ -107,29 +101,9 @@ public class MainActivity extends Activity {
         mActionMode.finish();
         mActionMode = null;
 
-        getSnackBarManager().withMessage("Items Deleted Homie")
-                            .withDuration(Snackbar.Duration.LONG)
-                            .withListener(new Snackbar.SnackListener() {
-                                @Override
-                                public void onShowMessage() {
-                                    //Begin animating things so that snackbar doesn't overlap Floating Action Buttons, etc
-                                }
-
-                                @Override
-                                public void onMessageShown() {
-                                    //Message is visible
-                                }
-
-                                @Override
-                                public void onHideMessage() {
-                                    //Begin animating things back down because snackbar is going away
-                                }
-
-                                @Override
-                                public void onMessageDone() {
-                                    //Message is completely gone
-                                }
-                            })
+        getSnackbar().withMessage("Items deleted home skillet. This message is longer than normal to wrap to two lines. Hopefully.")
+                .withDuration(Snackbar.Duration.LONG)
+                .withBackgroundColor(android.R.color.holo_green_light)
                 .show();
     }
 }

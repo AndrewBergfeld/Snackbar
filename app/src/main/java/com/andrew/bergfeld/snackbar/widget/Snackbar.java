@@ -1,12 +1,10 @@
 package com.andrew.bergfeld.snackbar.widget;
 
-import android.content.ClipData;
-import android.content.ClipDescription;
 import android.content.Context;
+import android.content.res.ColorStateList;
+import android.content.res.Resources;
 import android.util.AttributeSet;
-import android.view.DragEvent;
 import android.view.LayoutInflater;
-import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -15,19 +13,22 @@ import android.widget.TextView;
 
 import com.andrew.bergfeld.snackbar.R;
 
+import java.util.LinkedList;
+
 public class Snackbar extends FrameLayout {
 
     //Delta in pixels to count as a swipe away gesture
     private static final float SWIPE_AWAY_THRESHOLD = 50;
 
     private View mContainer;
-    private TextView mMessage;
-    private TextView mAction;
-    private SnackListener mListener;
-    private SnackbarManager mManager;
+    private TextView mMessageText;
+    private TextView mActionText;
+    private Listener mListener;
 
     private float mDragStartedX;
     private boolean mIsDragging;
+
+    private LinkedList<Vo> mMessages;
 
     public Snackbar(Context context) {
         super(context);
@@ -50,9 +51,11 @@ public class Snackbar extends FrameLayout {
     private void initialize(Context context) {
         LayoutInflater.from(context).inflate(R.layout.view_snackbar, this, true);
 
+        mMessages = new LinkedList<Vo>();
+
         mContainer = findViewById(R.id.container);
-        mAction = (TextView) findViewById(R.id.action);
-        mMessage = (TextView) findViewById(R.id.message);
+        mActionText = (TextView) findViewById(R.id.action);
+        mMessageText = (TextView) findViewById(R.id.message);
 
         mContainer.setVisibility(GONE);
         mContainer.setOnClickListener(new OnClickListener() {
@@ -63,47 +66,53 @@ public class Snackbar extends FrameLayout {
         });
     }
 
-    @Override
-    public boolean onTouchEvent(MotionEvent event) {
-        float deltaX;
+    //WIP swipe away
+//    @Override
+//    public boolean onTouchEvent(MotionEvent event) {
+//        float deltaX;
+//
+//        switch (event.getAction()) {
+//            case MotionEvent.ACTION_DOWN:
+//                mIsDragging = true;
+//                mDragStartedX = event.getX();
+//                return true;
+//
+//            case MotionEvent.ACTION_MOVE:
+//                if (mIsDragging) {
+//                    deltaX = (mDragStartedX - event.getX()) * -1;
+//
+//                    setTranslationX(deltaX);
+//                    return true;
+//                }
+//
+//
+//            case MotionEvent.ACTION_UP:
+//                mIsDragging = false;
+//                deltaX = (mDragStartedX - event.getX()) * -1;
+//
+//                if (deltaX > SWIPE_AWAY_THRESHOLD) {
+//                    swipeAway(deltaX);
+//                }
+//                return true;
+//        }
+//
+//        return super.onTouchEvent(event);
+//    }
 
-        switch (event.getAction()) {
-            case MotionEvent.ACTION_DOWN:
-                mIsDragging = true;
-                mDragStartedX = event.getX();
-                return true;
-
-            case MotionEvent.ACTION_MOVE:
-                if (mIsDragging) {
-                    deltaX = (mDragStartedX - event.getX()) * -1;
-
-                    setTranslationX(deltaX);
-                    return true;
-                }
-
-
-            case MotionEvent.ACTION_UP:
-                mIsDragging = false;
-                deltaX = (mDragStartedX - event.getX()) * -1;
-
-                if (deltaX > SWIPE_AWAY_THRESHOLD) {
-                    swipeAway(deltaX);
-                }
-                return true;
-        }
-
-        return super.onTouchEvent(event);
-    }
-
-    public void show(final SnackbarMessageVo snackbarMessageVo) {
-        mMessage.setText(snackbarMessageVo.message);
+    private void showMessage(final Vo snackbarMessageVo) {
+        mMessageText.setText(snackbarMessageVo.message);
 
         mListener = snackbarMessageVo.listener;
 
         if (snackbarMessageVo.action != null) {
-            mAction.setVisibility(VISIBLE);
-            mAction.setText(snackbarMessageVo.action);
-            mAction.setOnClickListener(new OnClickListener() {
+            mActionText.setVisibility(VISIBLE);
+            mActionText.setText(snackbarMessageVo.action);
+
+            if (snackbarMessageVo.actionListener == null) {
+                throw new IllegalStateException("If a snackbar has an action it must have an actionListener as well.");
+            }
+
+            mActionText.setOnClickListener(new OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     snackbarMessageVo.actionListener.onActionClicked();
@@ -112,17 +121,19 @@ public class Snackbar extends FrameLayout {
                 }
             });
         } else {
-            mAction.setVisibility(GONE);
+            mActionText.setVisibility(GONE);
         }
 
-        if (mManager == null) {
-            throw new IllegalStateException("Snackbar.setSnackbarManager() must be used prior to showing messages");
-        }
+        Resources resources = getResources();
+
+        mContainer.setBackgroundColor(resources.getColor(snackbarMessageVo.containerColor));
+        mMessageText.setTextColor(resources.getColor(snackbarMessageVo.messageTextColor));
+        mActionText.setTextColor(resources.getColor(snackbarMessageVo.actionTextColor));
 
         animateVisible(snackbarMessageVo.duration);
     }
 
-    public boolean isShowingMessage() {
+    private boolean isShowingMessage() {
         return mContainer.getVisibility() == VISIBLE;
     }
 
@@ -180,7 +191,7 @@ public class Snackbar extends FrameLayout {
                     mListener.onMessageDone();
                 }
 
-                mManager.onMessageDone();
+               onMessageDone();
             }
 
             @Override
@@ -213,7 +224,7 @@ public class Snackbar extends FrameLayout {
         mContainer.startAnimation(swipeAnimation);
     }
 
-    public static class SnackListener {
+    public static class Listener {
 
         public void onShowMessage() {
         }
@@ -228,20 +239,16 @@ public class Snackbar extends FrameLayout {
         }
     }
 
-    public void setSnackbarManager(SnackbarManager snackbarManager) {
-        mManager = snackbarManager;
-    }
-
-    public interface SnackbarManager {
-        void onMessageDone();
-    }
-
-    public static class SnackbarMessageVo {
+    public static class Vo {
         public String message;
         public String action;
         public ActionListener actionListener;
         public Duration duration;
-        public SnackListener listener;
+        public Listener listener;
+
+        public int containerColor;
+        public int messageTextColor;
+        public int actionTextColor;
     }
 
     public interface ActionListener {
@@ -260,6 +267,76 @@ public class Snackbar extends FrameLayout {
 
         public int getValue() {
             return value;
+        }
+    }
+
+    public Builder withMessage(String message) {
+        return new Builder(message);
+    }
+
+    public class Builder {
+
+        private Vo mSnack;
+
+        public Builder(String message) {
+            mSnack = new Vo();
+            mSnack.message = message;
+            mSnack.duration = Snackbar.Duration.SHORT;
+            mSnack.containerColor = R.color.snackbar_background;
+            mSnack.messageTextColor = R.color.snackbar_message_text_color;
+            mSnack.actionTextColor = R.color.snackbar_action_text_color;
+        }
+
+        public Builder withAction(String message, Snackbar.ActionListener actionClickListener) {
+            mSnack.action = message;
+            mSnack.actionListener = actionClickListener;
+
+            return this;
+        }
+
+        public Builder withDuration(Snackbar.Duration duration) {
+            mSnack.duration = duration;
+
+            return this;
+        }
+
+        public Builder withListener(Listener listener) {
+            mSnack.listener = listener;
+
+            return this;
+        }
+
+        public Builder withBackgroundColor(int backgroundColorResId) {
+            mSnack.containerColor = backgroundColorResId;
+
+            return this;
+        }
+
+        public Builder withMessageTextColor(int messageTextColorResId) {
+            mSnack.messageTextColor = messageTextColorResId;
+
+            return this;
+        }
+
+        public Builder withActionTextColor(int actionTextColorResId) {
+            mSnack.actionTextColor = actionTextColorResId;
+
+            return this;
+        }
+
+        public void show() {
+            if (isShowingMessage()) {
+                mMessages.add(mSnack);
+            } else {
+                showMessage(mSnack);
+            }
+        }
+
+    }
+
+    private void onMessageDone() {
+        if (mMessages.size() > 0) {
+            showMessage(mMessages.removeFirst());
         }
     }
 }

@@ -3,10 +3,10 @@ package com.andrew.bergfeld.snackbar.widget;
 import android.content.Context;
 import android.content.res.Resources;
 import android.util.AttributeSet;
-import android.view.GestureDetector;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
 import android.widget.FrameLayout;
@@ -18,14 +18,13 @@ import java.util.LinkedList;
 
 public class Snackbar extends FrameLayout {
 
-    private static final float SWIPE_AWAY_THRESHOLD = 50;
+    private static final float SWIPE_AWAY_THRESHOLD = 150;
 
     private View mContainer;
     private TextView mMessageText;
     private TextView mActionText;
     private Listener mListener;
 
-    private GestureDetector mSwipeDetector;
     private Runnable mAnimateGoneRunnable;
     private LinkedList<Vo> mMessages;
 
@@ -62,22 +61,8 @@ public class Snackbar extends FrameLayout {
         mActionText = (TextView) findViewById(R.id.action);
         mMessageText = (TextView) findViewById(R.id.message);
 
-        mSwipeDetector = new GestureDetector(getContext(), new SwipeDetector());
-
         mContainer.setVisibility(GONE);
-        mContainer.setOnClickListener(new OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                animateGone();
-            }
-        });
-
-        mContainer.setOnTouchListener(new OnTouchListener() {
-            @Override
-            public boolean onTouch(View v, MotionEvent event) {
-                return mSwipeDetector.onTouchEvent(event);
-            }
-        });
+        mContainer.setOnTouchListener(new HorizontalSwipeListener(getContext()));
     }
 
     private void showMessage(final Vo snackbarMessageVo) {
@@ -148,7 +133,7 @@ public class Snackbar extends FrameLayout {
     }
 
     private void animateGone() {
-        resetMessageTimer();
+        cancelDelayedRunnable();
 
         Animation hide = AnimationUtils.loadAnimation(getContext(), R.anim.snackbar_hide);
 
@@ -180,9 +165,9 @@ public class Snackbar extends FrameLayout {
     }
 
     private void swipeAway(float deltaX) {
-        resetMessageTimer();
+        cancelDelayedRunnable();
 
-        Animation swipeAnimation = AnimationUtils.loadAnimation(getContext(), deltaX < 0 ? R.anim.snackbar_swipe_right : R.anim.snackbar_swipe_left);
+        Animation swipeAnimation = AnimationUtils.loadAnimation(getContext(), deltaX > 0 ? R.anim.snackbar_swipe_right : R.anim.snackbar_swipe_left);
 
         swipeAnimation.setAnimationListener(new Animation.AnimationListener() {
             @Override
@@ -205,7 +190,14 @@ public class Snackbar extends FrameLayout {
         mContainer.startAnimation(swipeAnimation);
     }
 
-    private void resetMessageTimer() {
+    private void animateCanceledSwipe() {
+        mContainer.animate()
+                .translationX(0)
+                .setDuration(getResources().getInteger(R.integer.snackbar_animation_duration))
+                .start();
+    }
+
+    private void cancelDelayedRunnable() {
         removeCallbacks(mAnimateGoneRunnable);
     }
 
@@ -224,7 +216,7 @@ public class Snackbar extends FrameLayout {
         }
     }
 
-    public static class Vo {
+    private class Vo {
         public String message;
         public String action;
         public ActionListener actionListener;
@@ -325,18 +317,62 @@ public class Snackbar extends FrameLayout {
         }
     }
 
-    private class SwipeDetector extends GestureDetector.SimpleOnGestureListener {
+    private class HorizontalSwipeListener implements OnTouchListener {
+
+        private float mDownPosition;
+        private float mDraggedDistance;
+        private boolean mIsDragging;
+        private float mTouchSlop;
+
+        public HorizontalSwipeListener(Context context) {
+            mTouchSlop = ViewConfiguration.get(context).getScaledTouchSlop();
+        }
+
         @Override
-        public boolean onFling(MotionEvent downEvent, MotionEvent upEvent, float velocityX, float velocityY) {
-            float deltaX = downEvent.getX() - upEvent.getX();
+        public boolean onTouch(View v, MotionEvent event) {
+            switch (event.getActionMasked()) {
+                case MotionEvent.ACTION_DOWN:
+                    mDownPosition = event.getRawX();
 
-            if (Math.abs(deltaX) >= SWIPE_AWAY_THRESHOLD) {
-                swipeAway(deltaX);
+                    return true;
 
-                return true;
+                case MotionEvent.ACTION_MOVE:
+                    mDraggedDistance = event.getRawX() - mDownPosition;
+
+                    if (!mIsDragging && Math.abs(mDraggedDistance) > mTouchSlop) {
+                        mIsDragging = true;
+                    }
+
+                    if (mIsDragging) {
+                        mContainer.setTranslationX(mDraggedDistance - mTouchSlop);
+                    }
+
+                    return true;
+
+                case MotionEvent.ACTION_UP:
+                    if (!mIsDragging) {
+                        //Treat as click
+                        animateGone();
+                    }
+
+                    float deltaX = event.getRawX() - mDownPosition;
+
+                    if (Math.abs(deltaX) >= SWIPE_AWAY_THRESHOLD) {
+                        swipeAway(deltaX);
+                    } else {
+                        animateCanceledSwipe();
+                    }
+
+                    mDownPosition = 0;
+                    mDraggedDistance = 0;
+
+                    mIsDragging = false;
+
+                    return true;
             }
 
             return false;
         }
     }
+
 }

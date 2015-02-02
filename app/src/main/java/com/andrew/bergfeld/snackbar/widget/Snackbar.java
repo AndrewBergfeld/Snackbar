@@ -1,10 +1,11 @@
 package com.andrew.bergfeld.snackbar.widget;
 
 import android.content.Context;
-import android.content.res.ColorStateList;
 import android.content.res.Resources;
 import android.util.AttributeSet;
+import android.view.GestureDetector;
 import android.view.LayoutInflater;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
@@ -17,7 +18,6 @@ import java.util.LinkedList;
 
 public class Snackbar extends FrameLayout {
 
-    //Delta in pixels to count as a swipe away gesture
     private static final float SWIPE_AWAY_THRESHOLD = 50;
 
     private View mContainer;
@@ -25,9 +25,8 @@ public class Snackbar extends FrameLayout {
     private TextView mActionText;
     private Listener mListener;
 
-    private float mDragStartedX;
-    private boolean mIsDragging;
-
+    private GestureDetector mSwipeDetector;
+    private Runnable mAnimateGoneRunnable;
     private LinkedList<Vo> mMessages;
 
     public Snackbar(Context context) {
@@ -52,10 +51,18 @@ public class Snackbar extends FrameLayout {
         LayoutInflater.from(context).inflate(R.layout.view_snackbar, this, true);
 
         mMessages = new LinkedList<Vo>();
+        mAnimateGoneRunnable = new Runnable() {
+            @Override
+            public void run() {
+                animateGone();
+            }
+        };
 
         mContainer = findViewById(R.id.container);
         mActionText = (TextView) findViewById(R.id.action);
         mMessageText = (TextView) findViewById(R.id.message);
+
+        mSwipeDetector = new GestureDetector(getContext(), new SwipeDetector());
 
         mContainer.setVisibility(GONE);
         mContainer.setOnClickListener(new OnClickListener() {
@@ -64,40 +71,14 @@ public class Snackbar extends FrameLayout {
                 animateGone();
             }
         });
-    }
 
-    //WIP swipe away
-//    @Override
-//    public boolean onTouchEvent(MotionEvent event) {
-//        float deltaX;
-//
-//        switch (event.getAction()) {
-//            case MotionEvent.ACTION_DOWN:
-//                mIsDragging = true;
-//                mDragStartedX = event.getX();
-//                return true;
-//
-//            case MotionEvent.ACTION_MOVE:
-//                if (mIsDragging) {
-//                    deltaX = (mDragStartedX - event.getX()) * -1;
-//
-//                    setTranslationX(deltaX);
-//                    return true;
-//                }
-//
-//
-//            case MotionEvent.ACTION_UP:
-//                mIsDragging = false;
-//                deltaX = (mDragStartedX - event.getX()) * -1;
-//
-//                if (deltaX > SWIPE_AWAY_THRESHOLD) {
-//                    swipeAway(deltaX);
-//                }
-//                return true;
-//        }
-//
-//        return super.onTouchEvent(event);
-//    }
+        mContainer.setOnTouchListener(new OnTouchListener() {
+            @Override
+            public boolean onTouch(View v, MotionEvent event) {
+                return mSwipeDetector.onTouchEvent(event);
+            }
+        });
+    }
 
     private void showMessage(final Vo snackbarMessageVo) {
         mMessageText.setText(snackbarMessageVo.message);
@@ -154,13 +135,7 @@ public class Snackbar extends FrameLayout {
                     mListener.onMessageShown();
                 }
 
-                    postDelayed(new Runnable() {
-                        @Override
-                        public void run() {
-                            animateGone();
-                        }
-                    }, duration.getValue());
-
+                postDelayed(mAnimateGoneRunnable, duration.getValue());
             }
 
             @Override
@@ -173,6 +148,8 @@ public class Snackbar extends FrameLayout {
     }
 
     private void animateGone() {
+        resetMessageTimer();
+
         Animation hide = AnimationUtils.loadAnimation(getContext(), R.anim.snackbar_hide);
 
         hide.setAnimationListener(new Animation.AnimationListener() {
@@ -203,7 +180,9 @@ public class Snackbar extends FrameLayout {
     }
 
     private void swipeAway(float deltaX) {
-        Animation swipeAnimation = AnimationUtils.loadAnimation(getContext(), deltaX > 0 ? R.anim.snackbar_swipe_right : R.anim.snackbar_swipe_left);
+        resetMessageTimer();
+
+        Animation swipeAnimation = AnimationUtils.loadAnimation(getContext(), deltaX < 0 ? R.anim.snackbar_swipe_right : R.anim.snackbar_swipe_left);
 
         swipeAnimation.setAnimationListener(new Animation.AnimationListener() {
             @Override
@@ -214,6 +193,8 @@ public class Snackbar extends FrameLayout {
             public void onAnimationEnd(Animation animation) {
                 mContainer.setTranslationX(0);
                 mContainer.setVisibility(GONE);
+
+                onMessageDone();
             }
 
             @Override
@@ -222,6 +203,10 @@ public class Snackbar extends FrameLayout {
         });
 
         mContainer.startAnimation(swipeAnimation);
+    }
+
+    private void resetMessageTimer() {
+        removeCallbacks(mAnimateGoneRunnable);
     }
 
     public static class Listener {
@@ -337,6 +322,21 @@ public class Snackbar extends FrameLayout {
     private void onMessageDone() {
         if (mMessages.size() > 0) {
             showMessage(mMessages.removeFirst());
+        }
+    }
+
+    private class SwipeDetector extends GestureDetector.SimpleOnGestureListener {
+        @Override
+        public boolean onFling(MotionEvent downEvent, MotionEvent upEvent, float velocityX, float velocityY) {
+            float deltaX = downEvent.getX() - upEvent.getX();
+
+            if (Math.abs(deltaX) >= SWIPE_AWAY_THRESHOLD) {
+                swipeAway(deltaX);
+
+                return true;
+            }
+
+            return false;
         }
     }
 }

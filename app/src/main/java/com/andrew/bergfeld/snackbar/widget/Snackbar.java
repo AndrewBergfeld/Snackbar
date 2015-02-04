@@ -155,7 +155,7 @@ public class Snackbar extends FrameLayout {
                     mListener.onMessageDone();
                 }
 
-               onMessageDone();
+               handleNextMessage();
             }
 
             @Override
@@ -181,7 +181,7 @@ public class Snackbar extends FrameLayout {
                 mContainer.setTranslationX(0);
                 mContainer.setVisibility(GONE);
 
-                onMessageDone();
+                handleNextMessage();
             }
 
             @Override
@@ -232,6 +232,8 @@ public class Snackbar extends FrameLayout {
         SaveState saveState = (SaveState) state;
 
         mMessages = saveState.messages;
+
+        handleNextMessage();
 
         super.onRestoreInstanceState(saveState.getSuperState());
     }
@@ -331,7 +333,7 @@ public class Snackbar extends FrameLayout {
 
     }
 
-    private void onMessageDone() {
+    private void handleNextMessage() {
         if (mMessages.size() > 0) {
             showMessage(mMessages.removeFirst());
         }

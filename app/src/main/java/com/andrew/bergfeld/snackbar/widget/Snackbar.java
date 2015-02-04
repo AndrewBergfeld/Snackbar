@@ -2,6 +2,8 @@ package com.andrew.bergfeld.snackbar.widget;
 
 import android.content.Context;
 import android.content.res.Resources;
+import android.os.Parcel;
+import android.os.Parcelable;
 import android.util.AttributeSet;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
@@ -75,7 +77,7 @@ public class Snackbar extends FrameLayout {
             mActionText.setText(snackbarMessageVo.action);
 
             if (snackbarMessageVo.actionListener == null) {
-                throw new IllegalStateException("If a snackbar has an action it must have an actionListener as well.");
+                throw new IllegalStateException("If a Snackbar has an action it must have an actionListener as well.");
             }
 
             mActionText.setOnClickListener(new OnClickListener() {
@@ -214,6 +216,24 @@ public class Snackbar extends FrameLayout {
 
         public void onMessageDone() {
         }
+    }
+
+    @Override
+    protected Parcelable onSaveInstanceState() {
+        SaveState saveState = new SaveState(super.onSaveInstanceState());
+
+        saveState.messages = mMessages;
+
+        return saveState;
+    }
+
+    @Override
+    protected void onRestoreInstanceState(Parcelable state) {
+        SaveState saveState = (SaveState) state;
+
+        mMessages = saveState.messages;
+
+        super.onRestoreInstanceState(saveState.getSuperState());
     }
 
     private class Vo {
@@ -373,6 +393,40 @@ public class Snackbar extends FrameLayout {
 
             return false;
         }
+    }
+
+    private static class SaveState extends BaseSavedState {
+
+        public LinkedList<Vo> messages;
+
+        public SaveState(Parcel source) {
+            super(source);
+
+            messages = (LinkedList<Vo>) source.readSerializable();
+        }
+
+        public SaveState(Parcelable superState) {
+            super(superState);
+        }
+
+        @Override
+        public void writeToParcel(Parcel dest, int flags) {
+            super.writeToParcel(dest, flags);
+
+            dest.writeSerializable(messages);
+        }
+
+        public static final Creator<SaveState> CREATOR = new Creator<SaveState>() {
+            @Override
+            public SaveState createFromParcel(Parcel source) {
+                return new SaveState(source);
+            }
+
+            @Override
+            public SaveState[] newArray(int size) {
+                return new SaveState[size];
+            }
+        };
     }
 
 }

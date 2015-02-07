@@ -6,7 +6,7 @@ import android.os.Bundle;
 import com.andrew.bergfeld.snackbar.R;
 import com.andrew.bergfeld.snackbar.widget.Snackbar;
 
-public class MainActivity extends Activity implements SnackbarProvider {
+public class ExampleActivity extends Activity implements SnackbarProvider {
 
     private Snackbar mSnackbar;
 

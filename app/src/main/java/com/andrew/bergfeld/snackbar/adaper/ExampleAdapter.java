@@ -8,11 +8,14 @@ import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
 import android.widget.TextView;
 
-public class DummyAdapter extends BaseAdapter {
+import java.util.ArrayList;
+
+public class ExampleAdapter extends ArrayAdapter<Object> {
 
     private Context mContext;
 
-    public DummyAdapter(Context context) {
+    public ExampleAdapter(Context context) {
+        super(context, -1, new ArrayList<Object>());
         mContext = context;
     }
 
@@ -23,7 +26,7 @@ public class DummyAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
-        return null;
+        return new Object();
     }
 
     @Override

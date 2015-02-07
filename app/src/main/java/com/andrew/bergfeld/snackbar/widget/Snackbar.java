@@ -29,6 +29,7 @@ public class Snackbar extends FrameLayout {
 
     private Runnable mAnimateGoneRunnable;
     private LinkedList<Vo> mMessages;
+    private Vo mCurrentSnack;
 
     public Snackbar(Context context) {
         super(context);
@@ -68,6 +69,7 @@ public class Snackbar extends FrameLayout {
     }
 
     private void showMessage(final Vo snackbarMessageVo) {
+        mCurrentSnack = snackbarMessageVo;
         mMessageText.setText(snackbarMessageVo.message);
 
         mListener = snackbarMessageVo.listener;
@@ -222,6 +224,10 @@ public class Snackbar extends FrameLayout {
     protected Parcelable onSaveInstanceState() {
         SaveState saveState = new SaveState(super.onSaveInstanceState());
 
+        if (isShowingMessage()) {
+            mMessages.addFirst(mCurrentSnack);
+        }
+
         saveState.messages = mMessages;
 
         return saveState;
@@ -334,6 +340,8 @@ public class Snackbar extends FrameLayout {
     }
 
     private void handleNextMessage() {
+        mCurrentSnack = null;
+
         if (mMessages.size() > 0) {
             showMessage(mMessages.removeFirst());
         }

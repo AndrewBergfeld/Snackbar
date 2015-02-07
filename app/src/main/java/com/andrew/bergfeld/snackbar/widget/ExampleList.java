@@ -11,7 +11,7 @@ import android.widget.ListView;
 
 import com.andrew.bergfeld.snackbar.R;
 import com.andrew.bergfeld.snackbar.activity.SnackbarProvider;
-import com.andrew.bergfeld.snackbar.adaper.DummyAdapter;
+import com.andrew.bergfeld.snackbar.adaper.ExampleAdapter;
 
 public class ExampleList extends ListView {
 
@@ -51,7 +51,7 @@ public class ExampleList extends ListView {
                 if (mActionMode != null) {
                     //Mark an item as selected
                 } else {
-                    getSnackbar().withMessage("List Item Clicked!")
+                    getSnackbar().withMessage("List Item " + position + " Clicked!")
                             .withAction("Ok!", new Snackbar.ActionListener() {
                                 @Override
                                 public void onActionClicked() {
@@ -75,7 +75,7 @@ public class ExampleList extends ListView {
             }
         });
 
-        setAdapter(new DummyAdapter(getContext()));
+        setAdapter(new ExampleAdapter(getContext()));
     }
 
     private void deleteSelectedListItems() {

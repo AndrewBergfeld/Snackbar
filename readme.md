@@ -7,8 +7,9 @@ Adding a Snackbar to your project is easy. Simply add a Snackbar to the bottom o
 
 There are examples in the library as well.
 
-## Currently Being Worked on
+## To Do list
 - Tablet layouts (as I don't have a large enough device to test on)
+- Gradle-ize project for building library locally
 - Alternative methods to accessing the Snackbar, rather than casting context
 
 ##Example Usage
